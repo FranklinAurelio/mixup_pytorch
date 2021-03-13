@@ -19,6 +19,10 @@ from utils import progress_bar
 from torch.autograd import Variable
 
 
+from torch.utils.tensorboard import SummaryWriter
+
+writerOriginal = SummaryWriter('runs/tensorboard')
+
 parser = argparse.ArgumentParser(description='PyTorch CIFAR100 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
@@ -174,7 +178,7 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        train_loss += loss.data[0]
+        train_loss += loss.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         _, targets = torch.max(targets_shuffle.data, 1)
@@ -182,6 +186,8 @@ def train(epoch):
 
         progress_bar(batch_idx, len(trainloader), 'Epoch %d, Training Loss: %.3f | Acc: %.3f%% (%d/%d)'  # noqa
                      % (epoch, train_loss / (batch_idx + 1), 100. * correct / total, correct, total))  # noqa
+        writerOriginal.add_scalar("acc train", acc, epoch )
+        writerOriginal.add_scalar("entropy train", loss, epoch)
 
 
 def test(epoch):
@@ -198,7 +204,7 @@ def test(epoch):
         outputs = net(inputs)
         loss = criterion(outputs, targets)
 
-        test_loss += loss.data[0]
+        test_loss += loss.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
@@ -208,6 +214,10 @@ def test(epoch):
 
     # Save checkpoint.
     acc = 100. * correct / total
+    
+    writerOriginal.add_scalar("acc test", acc, epoch )
+    writerOriginal.add_scalar("entropy test", loss, epoch)
+    
     if acc > best_acc:
         print('Saving..')
         state = {
